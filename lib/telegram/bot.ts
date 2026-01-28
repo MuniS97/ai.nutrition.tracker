@@ -22,8 +22,6 @@ export function createBot() {
     
     const keyboard = new InlineKeyboard()
       .webApp("📊 Open Dashboard", process.env.NEXT_PUBLIC_APP_URL + "/dashboard")
-      .row()
-      .webApp("🧮 Calorie Calculator", process.env.NEXT_PUBLIC_APP_URL + "/calculator");
     
     if (!userDoc.exists()) {
       await ctx.reply(

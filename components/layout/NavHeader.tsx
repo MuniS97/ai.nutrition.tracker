@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { getSession, signOut, type UserSession } from "@/lib/firebase/auth";
+import { isTelegramMiniApp, initTelegramWebApp } from "@/lib/telegram/webapp";
+import { getUserByTelegramId } from "@/lib/firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Sigma, Menu, X, LogOut, Camera, LayoutDashboard, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,12 +16,35 @@ export function NavHeader() {
   const [session, setSession] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMiniApp, setIsMiniApp] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const userSession = await getSession();
-        setSession(userSession);
+        // Check if running as Telegram Mini App
+        if (isTelegramMiniApp()) {
+          setIsMiniApp(true);
+          
+          const webApp = initTelegramWebApp();
+          if (webApp?.userId) {
+            // Try to get user from Firestore
+            const userData = await getUserByTelegramId(webApp.userId);
+            if (userData) {
+              // Create a mock session for header
+              setSession({
+                user: {
+                  uid: webApp.userId,
+                  email: webApp.username ? `${webApp.username}@telegram` : 'telegram-user',
+                } as any,
+                profile: userData.profile,
+              });
+            }
+          }
+        } else {
+          // Regular Firebase auth
+          const userSession = await getSession();
+          setSession(userSession);
+        }
       } catch (error) {
         console.error("Error checking session:", error);
       } finally {
@@ -28,14 +53,21 @@ export function NavHeader() {
     };
 
     checkAuth();
-  }, []);
+  }, [pathname]); // Re-check on route change
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-      router.push("/login");
-    } catch (error) {
-      console.error("Error signing out:", error);
+    if (isMiniApp) {
+      // Close Mini App
+      const webApp = initTelegramWebApp();
+      webApp?.tg.close();
+    } else {
+      // Regular sign out
+      try {
+        await signOut();
+        router.push("/login");
+      } catch (error) {
+        console.error("Error signing out:", error);
+      }
     }
   };
 
@@ -98,10 +130,17 @@ export function NavHeader() {
             );
           })}
           {isAuthenticated && (
-            <Button variant="outline" size="sm" onClick={handleSignOut}>
-              <LogOut className="mr-2 size-4" />
-              Sign Out
-            </Button>
+            <>
+              {isMiniApp && (
+                <span className="text-xs text-muted-foreground">
+                  🤖 Telegram
+                </span>
+              )}
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
+                <LogOut className="mr-2 size-4" />
+                {isMiniApp ? 'Close' : 'Sign Out'}
+              </Button>
+            </>
           )}
         </nav>
 
@@ -168,7 +207,7 @@ export function NavHeader() {
                 }}
               >
                 <LogOut className="mr-2 size-4" />
-                Sign Out
+                {isMiniApp ? 'Close' : 'Sign Out'}
               </Button>
             )}
           </nav>
@@ -177,4 +216,3 @@ export function NavHeader() {
     </header>
   );
 }
-

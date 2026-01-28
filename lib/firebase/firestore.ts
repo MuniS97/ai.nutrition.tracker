@@ -8,6 +8,8 @@ import {
   limit,
   Timestamp,
   type DocumentData,
+  doc,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "./config";
 
@@ -175,3 +177,17 @@ export async function getRecentLogs(
   }
 }
 
+export async function getUserByTelegramId(telegramId: string) {
+  try {
+    const userDoc = await getDoc(doc(db, "users", telegramId));
+    
+    if (!userDoc.exists()) {
+      return null;
+    }
+    
+    return userDoc.data();
+  } catch (error) {
+    console.error("Error getting user by Telegram ID:", error);
+    throw error;
+  }
+}

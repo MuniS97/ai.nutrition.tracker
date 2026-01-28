@@ -1,6 +1,8 @@
-import { Bot, Context } from "grammy";
+import { Bot, Context, InlineKeyboard } from "grammy";
 import { analyzeFood, type FoodItem } from "@/lib/ai/gemini";
 import { saveNutritionLog } from "@/lib/firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebase";
 
 // Initialize bot
 export function createBot() {
@@ -12,17 +14,31 @@ export function createBot() {
   const bot = new Bot(token);
 
   // /start command handler
-  bot.command("start", async (ctx: Context) => {
-    const firstName = ctx.from?.first_name || "there";
-    await ctx.reply(
-      `👋 Hello ${firstName}!\n\n` +
-        `I'm your AI Nutrition Calculator Bot. I can help you track your nutrition by analyzing food photos.\n\n` +
-        `📸 Just send me a photo of your food, and I'll:\n` +
-        `• Analyze the food items\n` +
-        `• Calculate calories, protein, carbs, and fats\n` +
-        `• Save it to your nutrition log\n\n` +
-        `Send /help for more information.`
-    );
+  bot.command("start", async (ctx) => {
+    const telegramUserId = ctx.from?.id.toString();
+    
+    // Check if user exists
+    const userDoc = await getDoc(doc(db, "users", telegramUserId || ""));
+    
+    const keyboard = new InlineKeyboard()
+      .webApp("📊 Open Dashboard", process.env.NEXT_PUBLIC_APP_URL + "/dashboard")
+      .row()
+      .webApp("🧮 Calorie Calculator", process.env.NEXT_PUBLIC_APP_URL + "/calculator");
+    
+    if (!userDoc.exists()) {
+      await ctx.reply(
+        "👋 Welcome! Let's get started!\n\n" +
+        "Tap the button below to set up your profile:",
+        { reply_markup: keyboard }
+      );
+    } else {
+      await ctx.reply(
+        "👋 Welcome back!\n\n" +
+        "📸 Send a food photo for instant analysis\n" +
+        "📊 Or open the dashboard for detailed stats",
+        { reply_markup: keyboard }
+      );
+    }
   });
 
   // /help command handler

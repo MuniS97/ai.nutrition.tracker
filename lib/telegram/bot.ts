@@ -45,7 +45,7 @@ export function createBot() {
   bot.on("message:photo", async (ctx: Context) => {
     try {
       // Get the largest photo
-      const photo = ctx.message.photo;
+      const photo = ctx?.message?.photo;
       if (!photo || photo.length === 0) {
         await ctx.reply("❌ Could not process the photo. Please try again.");
         return;
@@ -62,7 +62,7 @@ export function createBot() {
       const file = await ctx.api.getFile(fileId);
       if (!file.file_path) {
         await ctx.api.editMessageText(
-          ctx.chat.id,
+          ctx?.chat?.id ?? 0,
           analyzingMsg.message_id,
           "❌ Could not download the photo. Please try again."
         );
@@ -98,7 +98,7 @@ export function createBot() {
 
       if (!result.foods || result.foods.length === 0) {
         await ctx.api.editMessageText(
-          ctx.chat.id,
+          ctx?.chat?.id ?? 0,
           analyzingMsg.message_id,
           "❌ No food items detected in the photo. Please make sure the food is clearly visible and try again."
         );
@@ -134,7 +134,7 @@ export function createBot() {
       resultsText += `💾 Saving to your nutrition log...`;
 
       // Update message with results
-      await ctx.api.editMessageText(ctx.chat.id, analyzingMsg.message_id, resultsText, {
+      await ctx.api.editMessageText(ctx?.chat?.id ?? 0, analyzingMsg.message_id, resultsText, {
         parse_mode: "HTML",
       });
 
@@ -164,10 +164,10 @@ export function createBot() {
 
   // Handle text messages (non-photo)
   bot.on("message:text", async (ctx: Context) => {
-    const text = ctx.message.text;
+    const text = ctx?.message?.text;
     
     // Ignore commands (handled separately)
-    if (text.startsWith("/")) {
+    if (text?.startsWith("/")) {
       return;
     }
 

@@ -7,6 +7,7 @@ import { getSession, signOut, type UserSession } from "@/lib/firebase/auth";
 import { Button } from "@/components/ui/button";
 import { Sigma, Menu, X, LogOut, Camera, LayoutDashboard, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 export function NavHeader() {
   const pathname = usePathname();
@@ -16,18 +17,23 @@ export function NavHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const userSession = await getSession();
-        setSession(userSession);
-      } catch (error) {
-        console.error("Error checking session:", error);
-      } finally {
-        setIsLoading(false);
+    // Предполагаем, что в @/lib/firebase/auth у тебя есть доступ к объекту auth
+    // Если нет, импортируй getAuth из firebase/auth
+    const auth = getAuth(); 
+  
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setSession({
+          user,
+          profile: user.providerData[0] as unknown as any,
+        });
+      } else {
+        setSession(null);
       }
-    };
-
-    checkAuth();
+      setIsLoading(false);
+    });
+  
+    return () => unsubscribe();
   }, []);
 
   const handleSignOut = async () => {
